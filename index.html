@@ -1,0 +1,206 @@
+<!DOCTYPE html>
+<html lang="it">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+<title>QRi1 System</title>
+
+<script src="https://html2canvas.hertzen.com/dist/html2canvas.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+
+<style>
+body{font-family:Arial;background:#f4f4f4;margin:0;padding:20px;}
+.container{max-width:1200px;margin:auto;background:#fff;padding:20px;border-radius:10px;box-shadow:0 0 10px #0003;}
+
+h1{text-align:center;}
+
+input,textarea{
+width:100%;padding:6px;margin-top:4px;border:1px solid #ccc;border-radius:5px;
+}
+
+label{font-weight:bold;margin-top:10px;display:block;}
+
+.row{display:grid;grid-template-columns:1fr 1fr 1fr;gap:10px;}
+.row2{display:grid;grid-template-columns:1fr 1fr;gap:10px;}
+
+table{width:100%;border-collapse:collapse;margin-top:15px;}
+th,td{border:1px solid #999;padding:4px;font-size:12px;vertical-align:top;}
+
+.inner{
+width:100%;border-collapse:collapse;
+}
+.inner td{
+border:1px solid #aaa;font-size:10px;text-align:center;padding:2px;
+}
+
+button{padding:10px;margin-top:10px;border:none;border-radius:5px;cursor:pointer;font-weight:bold;}
+.save{background:#2e7d32;color:#fff;width:100%;}
+.pdf{background:#1565c0;color:#fff;width:100%;}
+.delete{background:#c62828;color:#fff;}
+
+.historyItem{
+background:#fafafa;padding:10px;margin-top:10px;border-radius:8px;border:1px solid #ddd;
+}
+</style>
+</head>
+
+<body>
+
+<div class="container" id="capture">
+
+<h1>QRi1 - Scheda Operativa</h1>
+
+<div class="row">
+<input id="leader" placeholder="Leader">
+<input id="team" placeholder="Team">
+<input id="area" placeholder="Area">
+</div>
+
+<div class="row2">
+<div>
+<label>Apertura</label>
+<input type="datetime-local" id="openDT">
+</div>
+<div>
+<label>Chiusura</label>
+<input type="datetime-local" id="closeDT">
+</div>
+</div>
+
+<label>Problema riscontrato</label>
+<textarea id="problem"></textarea>
+
+<h3>Tabella operativa (4 righe fisse)</h3>
+
+<table>
+<thead>
+<tr>
+<th>Cause</th>
+<th>Soluzioni / Azioni</th>
+<th>Resp / Scadenza</th>
+<th>Stato avanzamento</th>
+</tr>
+</thead>
+
+<tbody>
+<script>
+for(let i=0;i<4;i++){
+document.write(`
+<tr>
+<td><input id="c_${i}"></td>
+
+<td><input id="s_${i}"></td>
+
+<td><input id="r_${i}"></td>
+
+<td>
+
+<b>P</b> <input id="p_${i}" style="width:20px"><br>
+<b>D</b> <input id="d_${i}" style="width:20px"><br>
+
+<table class="inner">
+<tr>
+<td colspan="3"><b>C</b></td>
+<td><b>A</b> <input id="a_${i}" style="width:20px"></td>
+</tr>
+<tr>
+<td><input type="checkbox" id="m_${i}"> M</td>
+<td><input type="checkbox" id="p2_${i}"> P</td>
+<td><input type="checkbox" id="n_${i}"> N</td>
+<td></td>
+</tr>
+</table>
+
+</td>
+</tr>
+`);
+}
+</script>
+
+</tbody>
+</table>
+
+<button class="save" onclick="save()">SALVA SCHEDA</button>
+<button class="pdf" onclick="exportPDF()">ESPORTA PDF</button>
+
+<h2>Storico</h2>
+<div id="history"></div>
+
+</div>
+
+<script>
+
+let history = JSON.parse(localStorage.getItem("qri_db")) || [];
+
+function save(){
+
+let rows=[];
+
+for(let i=0;i<4;i++){
+rows.push({
+cause:document.getElementById("c_"+i).value,
+sol:document.getElementById("s_"+i).value,
+resp:document.getElementById("r_"+i).value,
+p:document.getElementById("p_"+i).value,
+d:document.getElementById("d_"+i).value,
+a:document.getElementById("a_"+i).value,
+m:document.getElementById("m_"+i).checked,
+p2:document.getElementById("p2_"+i).checked,
+n:document.getElementById("n_"+i).checked
+});
+}
+
+let obj={
+leader:leader.value,
+team:team.value,
+area:area.value,
+open:openDT.value,
+close:closeDT.value,
+problem:problem.value,
+rows:rows
+};
+
+history.unshift(obj);
+localStorage.setItem("qri_db",JSON.stringify(history));
+
+render();
+alert("Salvato");
+}
+
+function render(){
+let div=document.getElementById("history");
+div.innerHTML="";
+
+history.forEach((h,i)=>{
+div.innerHTML+=`
+<div class="historyItem">
+<b>${h.area}</b> - ${h.team}<br>
+Leader: ${h.leader}<br>
+<button class="delete" onclick="del(${i})">Elimina</button>
+</div>
+`;
+});
+}
+
+function del(i){
+history.splice(i,1);
+localStorage.setItem("qri_db",JSON.stringify(history));
+render();
+}
+
+function exportPDF(){
+html2canvas(document.getElementById("capture")).then(canvas=>{
+const img=canvas.toDataURL("image/png");
+const { jsPDF } = window.jspdf;
+const pdf=new jsPDF("p","mm","a4");
+pdf.addImage(img,"PNG",0,0,210,297);
+pdf.save("QRi1.pdf");
+});
+}
+
+render();
+
+</script>
+
+</body>
+</html>
